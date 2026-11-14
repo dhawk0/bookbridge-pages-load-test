@@ -1,0 +1,44 @@
+name: BookBridge synthetic Pages load test
+
+on:
+  workflow_dispatch:
+    inputs:
+      scale:
+        description: 'Start with smoke; full creates 17,845 synthetic shards (~258 MiB)'
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - full
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: bookbridge-pages-load-test
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout synthetic test generator only
+        uses: actions/checkout@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Generate synthetic static payload
+        run: python3 -u generate_synthetic_site.py --scale "${{ inputs.scale }}" --output _site
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site/
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
